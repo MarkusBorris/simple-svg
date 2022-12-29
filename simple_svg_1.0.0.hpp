@@ -32,6 +32,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef SIMPLE_SVG_HPP
 #define SIMPLE_SVG_HPP
 
+#include <utility>
 #include <vector>
 #include <string>
 #include <sstream>
@@ -43,7 +44,7 @@ namespace svg
 {
     // Utility XML/String Functions.
     template <typename T>
-    inline std::string attribute(std::string const & attribute_name,
+    std::string attribute(std::string const & attribute_name,
         T const & value, std::string const & unit = "")
     {
         std::stringstream ss;
@@ -52,7 +53,7 @@ namespace svg
     }
     inline std::string elemStart(std::string const & element_name)
     {
-        return "\t<" + element_name + " ";
+        return "    <" + element_name + " ";
     }
     inline std::string elemEnd(std::string const & element_name)
     {
@@ -98,37 +99,37 @@ namespace svg
 
     struct Point
     {
-        Point(double x = 0, double y = 0) : x(x), y(y) { }
+        explicit Point(double x = 0, double y = 0) : x(x), y(y) { }
         double x;
         double y;
     };
     inline optional<Point> getMinPoint(std::vector<Point> const & points)
     {
         if (points.empty())
-            return optional<Point>();
+            return {};
 
         Point min = points[0];
-        for (unsigned i = 0; i < points.size(); ++i) {
-            if (points[i].x < min.x)
-                min.x = points[i].x;
-            if (points[i].y < min.y)
-                min.y = points[i].y;
+        for (auto point : points) {
+            if (point.x < min.x)
+                min.x = point.x;
+            if (point.y < min.y)
+                min.y = point.y;
         }
-        return optional<Point>(min);
+        return {min};
     }
     inline optional<Point> getMaxPoint(std::vector<Point> const & points)
     {
         if (points.empty())
-            return optional<Point>();
+            return {};
 
         Point max = points[0];
-        for (unsigned i = 0; i < points.size(); ++i) {
-            if (points[i].x > max.x)
-                max.x = points[i].x;
-            if (points[i].y > max.y)
-                max.y = points[i].y;
+        for (auto point : points) {
+            if (point.x > max.x)
+                max.x = point.x;
+            if (point.y > max.y)
+                max.y = point.y;
         }
-        return optional<Point>(max);
+        return {max};
     }
 
     // Defines the dimensions, scale, origin, and origin offset of the document.
@@ -136,7 +137,7 @@ namespace svg
     {
         enum Origin { TopLeft, BottomLeft, TopRight, BottomRight };
 
-        Layout(Dimensions const & dimensions = Dimensions(400, 300), Origin origin = BottomLeft,
+        explicit Layout(Dimensions const & dimensions = Dimensions(400, 300), Origin origin = BottomLeft,
             double scale = 1, Point const & origin_offset = Point(0, 0))
             : dimensions(dimensions), scale(scale), origin(origin), origin_offset(origin_offset) { }
         Dimensions dimensions;
@@ -169,8 +170,8 @@ namespace svg
     class Serializeable
     {
     public:
-        Serializeable() { }
-        virtual ~Serializeable() { };
+        Serializeable() = default;
+        virtual ~Serializeable() = default;
         virtual std::string toString(Layout const & layout) const = 0;
     };
 
@@ -204,8 +205,8 @@ namespace svg
                 default: transparent = true; break;
             }
         }
-        virtual ~Color() { }
-        std::string toString(Layout const &) const
+        ~Color() override = default;
+        std::string toString(Layout const &) const override
         {
             std::stringstream ss;
             if (transparent)
@@ -232,9 +233,9 @@ namespace svg
     {
     public:
         Fill(Color::Defaults color) : color(color) { }
-        Fill(Color color = Color::Transparent)
+		Fill(Color color = Color::Transparent)
             : color(color) { }
-        std::string toString(Layout const & layout) const
+        std::string toString(Layout const & layout) const override
         {
             std::stringstream ss;
             ss << attribute("fill", color.toString(layout));
@@ -247,13 +248,13 @@ namespace svg
     class Stroke : public Serializeable
     {
     public:
-        Stroke(double width = -1, Color color = Color::Transparent, bool nonScalingStroke = false)
+        explicit Stroke(double width = -1, Color color = Color::Transparent, bool nonScalingStroke = false)
             : width(width), color(color), nonScaling(nonScalingStroke) { }
-        std::string toString(Layout const & layout) const
+        std::string toString(Layout const & layout) const override
         {
             // If stroke width is invalid.
             if (width < 0)
-                return std::string();
+                return {};
 
             std::stringstream ss;
             ss << attribute("stroke-width", translateScale(width, layout)) << attribute("stroke", color.toString(layout));
@@ -261,6 +262,7 @@ namespace svg
                ss << attribute("vector-effect", "non-scaling-stroke");
             return ss.str();
         }
+		double getWidth() const { return this->width; }
     private:
         double width;
         Color color;
@@ -270,8 +272,8 @@ namespace svg
     class Font : public Serializeable
     {
     public:
-        Font(double size = 12, std::string const & family = "Verdana") : size(size), family(family) { }
-        std::string toString(Layout const & layout) const
+        explicit Font(double size = 12, std::string family = "Verdana") : size(size), family(std::move(family)) { }
+        std::string toString(Layout const & layout) const override
         {
             std::stringstream ss;
             ss << attribute("font-size", translateScale(size, layout)) << attribute("font-family", family);
@@ -285,17 +287,17 @@ namespace svg
     class Shape : public Serializeable
     {
     public:
-        Shape(Fill const & fill = Fill(), Stroke const & stroke = Stroke())
-            : fill(fill), stroke(stroke) { }
-        virtual ~Shape() { }
-        virtual std::string toString(Layout const & layout) const = 0;
+        explicit Shape(Fill fill = Fill(), Stroke stroke = Stroke())
+            : fill(std::move(fill)), stroke(std::move(stroke)) { }
+        ~Shape() override = default;
+        std::string toString(Layout const & layout) const override = 0;
         virtual void offset(Point const & offset) = 0;
     protected:
         Fill fill;
         Stroke stroke;
     };
     template <typename T>
-    inline std::string vectorToString(std::vector<T> collection, Layout const & layout)
+    std::string vectorToString(std::vector<T> collection, Layout const & layout)
     {
         std::string combination_str;
         for (unsigned i = 0; i < collection.size(); ++i)
@@ -310,7 +312,7 @@ namespace svg
         Circle(Point const & center, double diameter, Fill const & fill,
             Stroke const & stroke = Stroke())
             : Shape(fill, stroke), center(center), radius(diameter / 2) { }
-        std::string toString(Layout const & layout) const
+        std::string toString(Layout const & layout) const override
         {
             std::stringstream ss;
             ss << elemStart("circle") << attribute("cx", translateX(center.x, layout))
@@ -319,7 +321,7 @@ namespace svg
                 << stroke.toString(layout) << emptyElemEnd();
             return ss.str();
         }
-        void offset(Point const & offset)
+        void offset(Point const & offset) override
         {
             center.x += offset.x;
             center.y += offset.y;
@@ -336,7 +338,7 @@ namespace svg
             Fill const & fill = Fill(), Stroke const & stroke = Stroke())
             : Shape(fill, stroke), center(center), radius_width(width / 2),
             radius_height(height / 2) { }
-        std::string toString(Layout const & layout) const
+        std::string toString(Layout const & layout) const override
         {
             std::stringstream ss;
             ss << elemStart("ellipse") << attribute("cx", translateX(center.x, layout))
@@ -346,7 +348,7 @@ namespace svg
                 << fill.toString(layout) << stroke.toString(layout) << emptyElemEnd();
             return ss.str();
         }
-        void offset(Point const & offset)
+        void offset(Point const & offset) override
         {
             center.x += offset.x;
             center.y += offset.y;
@@ -364,7 +366,7 @@ namespace svg
             Fill const & fill = Fill(), Stroke const & stroke = Stroke())
             : Shape(fill, stroke), edge(edge), width(width),
             height(height) { }
-        std::string toString(Layout const & layout) const
+        std::string toString(Layout const & layout) const override
         {
             std::stringstream ss;
             ss << elemStart("rect") << attribute("x", translateX(edge.x, layout))
@@ -374,7 +376,7 @@ namespace svg
                 << fill.toString(layout) << stroke.toString(layout) << emptyElemEnd();
             return ss.str();
         }
-        void offset(Point const & offset)
+        void offset(Point const & offset) override
         {
             edge.x += offset.x;
             edge.y += offset.y;
@@ -392,7 +394,7 @@ namespace svg
             Stroke const & stroke = Stroke())
             : Shape(Fill(), stroke), start_point(start_point),
             end_point(end_point) { }
-        std::string toString(Layout const & layout) const
+        std::string toString(Layout const & layout) const override
         {
             std::stringstream ss;
             ss << elemStart("line") << attribute("x1", translateX(start_point.x, layout))
@@ -402,7 +404,7 @@ namespace svg
                 << stroke.toString(layout) << emptyElemEnd();
             return ss.str();
         }
-        void offset(Point const & offset)
+        void offset(Point const & offset) override
         {
             start_point.x += offset.x;
             start_point.y += offset.y;
@@ -418,32 +420,32 @@ namespace svg
     class Polygon : public Shape
     {
     public:
-        Polygon(Fill const & fill = Fill(), Stroke const & stroke = Stroke())
+        explicit Polygon(Fill const & fill = Fill(), Stroke const & stroke = Stroke())
             : Shape(fill, stroke) { }
-        Polygon(Stroke const & stroke = Stroke()) : Shape(Color::Transparent, stroke) { }
+		Polygon(Stroke const & stroke = Stroke()) : Shape(Color::Transparent, stroke) { }
         Polygon & operator<<(Point const & point)
         {
             points.push_back(point);
             return *this;
         }
-        std::string toString(Layout const & layout) const
+        std::string toString(Layout const & layout) const override
         {
             std::stringstream ss;
             ss << elemStart("polygon");
 
             ss << "points=\"";
-            for (unsigned i = 0; i < points.size(); ++i)
-                ss << translateX(points[i].x, layout) << "," << translateY(points[i].y, layout) << " ";
+            for (auto point : points)
+                ss << translateX(point.x, layout) << "," << translateY(point.y, layout) << " ";
             ss << "\" ";
 
             ss << fill.toString(layout) << stroke.toString(layout) << emptyElemEnd();
             return ss.str();
         }
-        void offset(Point const & offset)
+        void offset(Point const & offset) override
         {
-            for (unsigned i = 0; i < points.size(); ++i) {
-                points[i].x += offset.x;
-                points[i].y += offset.y;
+            for (auto & point : points) {
+                point.x += offset.x;
+                point.y += offset.y;
             }
         }
     private:
@@ -453,10 +455,10 @@ namespace svg
     class Path : public Shape
     {
     public:
-       Path(Fill const & fill = Fill(), Stroke const & stroke = Stroke())
+       explicit Path(Fill const & fill = Fill(), Stroke const & stroke = Stroke())
           : Shape(fill, stroke) 
        {  startNewSubPath(); }
-       Path(Stroke const & stroke = Stroke()) : Shape(Color::Transparent, stroke) 
+       explicit Path(Stroke const & stroke = Stroke()) : Shape(Color::Transparent, stroke)
        {  startNewSubPath(); }
        Path & operator<<(Point const & point)
        {
@@ -466,11 +468,11 @@ namespace svg
 
        void startNewSubPath()
        {
-          if (paths.empty() || 0 < paths.back().size())
+          if (paths.empty() || !paths.back().empty())
             paths.emplace_back();
        }
 
-       std::string toString(Layout const & layout) const
+       std::string toString(Layout const & layout) const override
        {
           std::stringstream ss;
           ss << elemStart("path");
@@ -493,7 +495,7 @@ namespace svg
           return ss.str();
        }
 
-       void offset(Point const & offset)
+       void offset(Point const & offset) override
        {
           for (auto& subpath : paths)
              for (auto& point : subpath)
@@ -509,10 +511,10 @@ namespace svg
     class Polyline : public Shape
     {
     public:
-        Polyline(Fill const & fill = Fill(), Stroke const & stroke = Stroke())
+        explicit Polyline(Fill const & fill = Fill(), Stroke const & stroke = Stroke())
             : Shape(fill, stroke) { }
-        Polyline(Stroke const & stroke = Stroke()) : Shape(Color::Transparent, stroke) { }
-        Polyline(std::vector<Point> const & points,
+		explicit Polyline(Stroke const & stroke = Stroke()) : Shape(Color::Transparent, stroke) { }
+		explicit Polyline(std::vector<Point> const & points,
             Fill const & fill = Fill(), Stroke const & stroke = Stroke())
             : Shape(fill, stroke), points(points) { }
         Polyline & operator<<(Point const & point)
@@ -520,24 +522,24 @@ namespace svg
             points.push_back(point);
             return *this;
         }
-        std::string toString(Layout const & layout) const
+        std::string toString(Layout const & layout) const override
         {
             std::stringstream ss;
             ss << elemStart("polyline");
 
             ss << "points=\"";
-            for (unsigned i = 0; i < points.size(); ++i)
-                ss << translateX(points[i].x, layout) << "," << translateY(points[i].y, layout) << " ";
+            for (auto point : points)
+                ss << translateX(point.x, layout) << "," << translateY(point.y, layout) << " ";
             ss << "\" ";
 
             ss << fill.toString(layout) << stroke.toString(layout) << emptyElemEnd();
             return ss.str();
         }
-        void offset(Point const & offset)
+        void offset(Point const & offset) override
         {
-            for (unsigned i = 0; i < points.size(); ++i) {
-                points[i].x += offset.x;
-                points[i].y += offset.y;
+            for (auto & point : points) {
+                point.x += offset.x;
+                point.y += offset.y;
             }
         }
         std::vector<Point> points;
@@ -546,10 +548,10 @@ namespace svg
     class Text : public Shape
     {
     public:
-        Text(Point const & origin, std::string const & content, Fill const & fill = Fill(),
-             Font const & font = Font(), Stroke const & stroke = Stroke())
-            : Shape(fill, stroke), origin(origin), content(content), font(font) { }
-        std::string toString(Layout const & layout) const
+        Text(Point const & origin, std::string content, Fill const & fill = Fill(),
+             Font font = Font(), Stroke const & stroke = Stroke())
+            : Shape(fill, stroke), origin(origin), content(std::move(content)), font(std::move(font)) { }
+        std::string toString(Layout const & layout) const override
         {
             std::stringstream ss;
             ss << elemStart("text") << attribute("x", translateX(origin.x, layout))
@@ -558,7 +560,7 @@ namespace svg
                 << ">" << content << elemEnd("text");
             return ss.str();
         }
-        void offset(Point const & offset)
+        void offset(Point const & offset) override
         {
             origin.x += offset.x;
             origin.y += offset.y;
@@ -573,9 +575,9 @@ namespace svg
     class LineChart : public Shape
     {
     public:
-        LineChart(Dimensions margin = Dimensions(), double scale = 1,
-                  Stroke const & axis_stroke = Stroke(.5, Color::Purple))
-            : axis_stroke(axis_stroke), margin(margin), scale(scale) { }
+        explicit LineChart(Dimensions margin = Dimensions(),
+                  Stroke axis_stroke = Stroke(.5, Color::Purple))
+            : axis_stroke(std::move(axis_stroke)), margin(margin) { }
         LineChart & operator<<(Polyline const & polyline)
         {
             if (polyline.points.empty())
@@ -584,47 +586,46 @@ namespace svg
             polylines.push_back(polyline);
             return *this;
         }
-        std::string toString(Layout const & layout) const
+        std::string toString(Layout const & layout) const override
         {
             if (polylines.empty())
                 return "";
 
             std::string ret;
-            for (unsigned i = 0; i < polylines.size(); ++i)
-                ret += polylineToString(polylines[i], layout);
+            for (const auto & polyline : polylines)
+                ret += polylineToString(polyline, layout);
 
             return ret + axisString(layout);
         }
-        void offset(Point const & offset)
+        void offset(Point const & offset) override
         {
-            for (unsigned i = 0; i < polylines.size(); ++i)
-                polylines[i].offset(offset);
+            for (auto & polyline : polylines)
+                polyline.offset(offset);
         }
     private:
         Stroke axis_stroke;
         Dimensions margin;
-        double scale;
         std::vector<Polyline> polylines;
 
         optional<Dimensions> getDimensions() const
         {
             if (polylines.empty())
-                return optional<Dimensions>();
+                return {};
 
             optional<Point> min = getMinPoint(polylines[0].points);
             optional<Point> max = getMaxPoint(polylines[0].points);
-            for (unsigned i = 0; i < polylines.size(); ++i) {
-                if (getMinPoint(polylines[i].points)->x < min->x)
-                    min->x = getMinPoint(polylines[i].points)->x;
-                if (getMinPoint(polylines[i].points)->y < min->y)
-                    min->y = getMinPoint(polylines[i].points)->y;
-                if (getMaxPoint(polylines[i].points)->x > max->x)
-                    max->x = getMaxPoint(polylines[i].points)->x;
-                if (getMaxPoint(polylines[i].points)->y > max->y)
-                    max->y = getMaxPoint(polylines[i].points)->y;
+            for (const auto & polyline : polylines) {
+                if (getMinPoint(polyline.points)->x < min->x)
+                    min->x = getMinPoint(polyline.points)->x;
+                if (getMinPoint(polyline.points)->y < min->y)
+                    min->y = getMinPoint(polyline.points)->y;
+                if (getMaxPoint(polyline.points)->x > max->x)
+                    max->x = getMaxPoint(polyline.points)->x;
+                if (getMaxPoint(polyline.points)->y > max->y)
+                    max->y = getMaxPoint(polyline.points)->y;
             }
 
-            return optional<Dimensions>(Dimensions(max->x - min->x, max->y - min->y));
+            return {Dimensions(max->x - min->x, max->y - min->y)};
         }
         std::string axisString(Layout const & layout) const
         {
@@ -643,25 +644,29 @@ namespace svg
 
             return axis.toString(layout);
         }
-        std::string polylineToString(Polyline const & polyline, Layout const & layout) const
+        std::string polylineToString(Polyline const & polyline, Layout const & layout, bool withVertices = true) const
         {
             Polyline shifted_polyline = polyline;
             shifted_polyline.offset(Point(margin.width, margin.height));
 
-            std::vector<Circle> vertices;
-            for (unsigned i = 0; i < shifted_polyline.points.size(); ++i)
-                vertices.push_back(Circle(shifted_polyline.points[i], getDimensions()->height / 30.0, Color::Black));
+            if (withVertices) {
+                std::vector<Circle> vertices;
+                for (auto & point : shifted_polyline.points)
+                    vertices.emplace_back(point, getDimensions()->height / 100.0, Color::Black);
+                return shifted_polyline.toString(layout) + vectorToString(vertices, layout);
+            } else {
+                return shifted_polyline.toString(layout);
+            }
 
-            return shifted_polyline.toString(layout) + vectorToString(vertices, layout);
         }
     };
 
     class Document
     {
     public:
-        Document() {};
-        Document(std::string const & file_name, Layout layout = Layout())
-            : file_name(file_name), layout(layout) { }
+        Document() = default;
+        explicit Document(std::string file_name, Layout layout = Layout())
+            : file_name(std::move(file_name)), layout(layout) { }
 
         Document & operator<<(Shape const & shape)
         {
