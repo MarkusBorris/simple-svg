@@ -511,7 +511,7 @@ namespace svg
     class Polyline : public Shape
     {
     public:
-        explicit Polyline(Fill const & fill = Fill(), Stroke const & stroke = Stroke())
+        explicit Polyline(Fill const & fill, Stroke const & stroke = Stroke())
             : Shape(fill, stroke) { }
 		explicit Polyline(Stroke const & stroke = Stroke()) : Shape(Color::Transparent, stroke) { }
 		explicit Polyline(std::vector<Point> const & points,
