@@ -8,6 +8,7 @@ project(simple_svg_ext)
 
 ul_include(defaults.cmake)
 
+set(UL_ADDITIONAL_CLANG_FORMAT_DIRS "." CACHE STRING "" FORCE)
 ul_include(clang-format.cmake)
 ul_include(githooks.cmake)
 

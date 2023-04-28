@@ -13,12 +13,10 @@
 #include <utility>
 #include <vector>
 
-namespace svg::ext
-{
+namespace svg::ext {
 using PhysicalValue = double;
 
-struct AxisCaptions
-{
+struct AxisCaptions {
     PhysicalValue from = 0.0;
     PhysicalValue step = 0.0;
     std::string quantity;
@@ -27,8 +25,7 @@ struct AxisCaptions
 
 using ScaleTickCount = long;
 
-struct XAxis
-{
+struct XAxis {
     double posY = 0.0;
     double leftmostScaleTick = 0.0;
     double scaleTickStep = 0.0;
@@ -36,8 +33,7 @@ struct XAxis
     AxisCaptions physicalCaptions;
 };
 
-struct YAxis
-{
+struct YAxis {
     double posX = 0.0;
     double lowermostScaleTick = 0.0;
     double scaleTickStep = 0.0;
@@ -45,8 +41,7 @@ struct YAxis
     AxisCaptions physicalCaptions;
 };
 
-class ChartCoordSys : public Shape
-{
+class ChartCoordSys : public Shape {
 public:
     ChartCoordSys() = default;
 
@@ -54,12 +49,10 @@ public:
         : Shape(Fill(), s)
         , xa(std::move(xa))
         , ya(std::move(ya))
-        , axis_stroke(s)
-    {
+        , axis_stroke(s) {
     }
 
-    [[nodiscard]] std::string toString(const Layout& layout) const override
-    {
+    [[nodiscard]] std::string toString(const Layout& layout) const override {
         std::string ret;
 
         std::vector<Polyline> CoordSysLines;
@@ -75,8 +68,7 @@ public:
         return ret;
     }
 
-    void offset(const Point& offset) override
-    {
+    void offset(const Point& offset) override {
         this->margin_offset = offset;
     }
 
@@ -86,24 +78,21 @@ private:
     Stroke axis_stroke{0.5, Color::Black};
     Point margin_offset;
 
-    [[nodiscard]] std::string polylineToString(const Polyline& polyline, const Layout& layout) const
-    {
+    [[nodiscard]] std::string polylineToString(const Polyline& polyline, const Layout& layout) const {
         Polyline shifted_polyline = polyline;
         shifted_polyline.offset(this->margin_offset);
 
         return shifted_polyline.toString(layout);
     }
 
-    [[nodiscard]] std::string textToString(const Text_utf8& text, const Layout& layout) const
-    {
+    [[nodiscard]] std::string textToString(const Text_utf8& text, const Layout& layout) const {
         Text_utf8 shifted_text = text;
         shifted_text.offset(this->margin_offset);
 
         return shifted_text.toString(layout);
     }
 
-    void toPolylines(std::vector<Polyline>& retLines) const
-    {
+    void toPolylines(std::vector<Polyline>& retLines) const {
         retLines.resize(static_cast<size_t>(2 + xa.count + ya.count));
         const Color fillCol = Color::Transparent;
 
@@ -121,8 +110,7 @@ private:
 
         const auto xticktop = xa.posY + axis_stroke_width_timesX;
         const auto xtickbottom = xa.posY - axis_stroke_width_timesX;
-        for (ScaleTickCount i = 1; i <= xa.count; ++i)
-        {
+        for (ScaleTickCount i = 1; i <= xa.count; ++i) {
             Polyline xTick(fillCol, axis_stroke);
             const auto x = xa.leftmostScaleTick + static_cast<double>(i) * xa.scaleTickStep;
             xTick << Point(x, xticktop) << Point(x, xtickbottom);
@@ -131,8 +119,7 @@ private:
 
         const auto ytickleft = ya.posX - axis_stroke_width_timesX;
         const auto ytickright = ya.posX + axis_stroke_width_timesX;
-        for (ScaleTickCount i = 1; i <= ya.count; ++i)
-        {
+        for (ScaleTickCount i = 1; i <= ya.count; ++i) {
             Polyline yTick(fillCol, axis_stroke);
             const auto y = ya.lowermostScaleTick + static_cast<double>(i) * ya.scaleTickStep;
             yTick << Point(ytickleft, y) << Point(ytickright, y);
@@ -140,8 +127,7 @@ private:
         }
     }
 
-    void toTexts(std::vector<Text_utf8>& retTexts) const
-    {
+    void toTexts(std::vector<Text_utf8>& retTexts) const {
         // x-axis has 1, y-axis 2 text labels, then the scale tick number labels
         retTexts.reserve(static_cast<size_t>(1 + 2 + xa.count + ya.count));
         const Color txtColor(Color::Black);
@@ -157,8 +143,7 @@ private:
         txtformat.anchor = TextAnchor::center;
 
         std::string xTxt = xa.physicalCaptions.quantity;
-        if (!xa.physicalCaptions.unit.empty())
-        {
+        if (!xa.physicalCaptions.unit.empty()) {
             xTxt += " / ";
             xTxt += xa.physicalCaptions.unit;
         }
@@ -187,8 +172,7 @@ private:
         txtformat.anchor = TextAnchor::center;
         txtformat.font = tickFont;
         const auto xtick_ycoord = xa.posY - tickFontSize - axis_stroke_width_timesX;
-        for (ScaleTickCount i = 0; i < xa.count; ++i)
-        {
+        for (ScaleTickCount i = 0; i < xa.count; ++i) {
             const auto x = xa.leftmostScaleTick + static_cast<double>(i) * xa.scaleTickStep;
             const Point posTick(x, xtick_ycoord);
             std::stringstream ss;
@@ -201,8 +185,7 @@ private:
         std::stringstream yTickTxtSample;
         yTickTxtSample << ya.physicalCaptions.step;
         const auto ytick_xcoord = ya.posX - axis_stroke_width_timesX * 2.0;
-        for (ScaleTickCount i = 0; i < ya.count; ++i)
-        {
+        for (ScaleTickCount i = 0; i < ya.count; ++i) {
             const auto y = ya.lowermostScaleTick + static_cast<double>(i) * ya.scaleTickStep;
             const Point posTick(ytick_xcoord, y);
             std::stringstream ss;

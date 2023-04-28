@@ -12,24 +12,19 @@
 #include <string>
 #include <vector>
 
-namespace svg::ext
-{
-struct LineChartSetup
-{
+namespace svg::ext {
+struct LineChartSetup {
     Dimensions margin = Dimensions();
     double scale = 1.0;
 };
 
-class LineChart : public Shape
-{
+class LineChart : public Shape {
 public:
     explicit LineChart(const LineChartSetup& setup = LineChartSetup())
-        : setup(setup)
-    {
+        : setup(setup) {
     }
 
-    LineChart& operator<<(const Polyline& polyline)
-    {
+    LineChart& operator<<(const Polyline& polyline) {
         if (polyline.points.empty())
             return *this;
 
@@ -37,14 +32,12 @@ public:
         return *this;
     }
 
-    void setCoords(const ChartCoordSys& coords)
-    {
+    void setCoords(const ChartCoordSys& coords) {
         this->coordsys = coords;
         this->coordsys.offset(Point(setup.margin.width, setup.margin.height));
     }
 
-    [[nodiscard]] std::string toString(const Layout& layout) const override
-    {
+    [[nodiscard]] std::string toString(const Layout& layout) const override {
         std::string ret;
         for (const auto& polyline : polylines)
             ret += polylineToString(polyline, layout);
@@ -54,8 +47,7 @@ public:
         return ret;
     }
 
-    void offset(const Point& offset) override
-    {
+    void offset(const Point& offset) override {
         for (auto& polyline : polylines)
             polyline.offset(offset);
         coordsys.offset(offset);
@@ -66,8 +58,7 @@ private:
     std::vector<Polyline> polylines;
     ChartCoordSys coordsys;
 
-    [[nodiscard]] std::string polylineToString(const Polyline& polyline, const Layout& layout) const
-    {
+    [[nodiscard]] std::string polylineToString(const Polyline& polyline, const Layout& layout) const {
         Polyline shifted_polyline = polyline;
         shifted_polyline.offset(Point(setup.margin.width, setup.margin.height));
 

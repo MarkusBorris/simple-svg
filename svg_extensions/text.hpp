@@ -9,19 +9,15 @@
 #include "ul/ul.h"
 #include <string>
 
-namespace svg::ext
-{
-enum class TextAnchor
-{
+namespace svg::ext {
+enum class TextAnchor {
     left,
     center,
     right,
 };
 
-inline std::string anchor_to_string(TextAnchor a)
-{
-    switch (a)
-    {
+inline std::string anchor_to_string(TextAnchor a) {
+    switch (a) {
         case TextAnchor::left:
             return "start";
         case TextAnchor::center:
@@ -39,13 +35,10 @@ using TextColor = Color;
 //! This Text class does. It also provides functionality for text alignment and anything you like... just add to
 //! the implementation on demand.
 // couldn't derive from svg::Text - would have needed access to private members
-class Text_utf8 : public Shape
-{
+class Text_utf8 : public Shape {
 public:
-    struct Format
-    {
-        Format()
-        {
+    struct Format {
+        Format() {
         } // MinGW needs this strange line (!?)
 
         //! Text color. (Not background.)
@@ -62,12 +55,10 @@ public:
         : Shape(Fill(f.color), f.stroke)
         , origin(origin)
         , content(ul::str::utf8_to_HTML(content))
-        , format(f)
-    {
+        , format(f) {
     }
 
-    [[nodiscard]] std::string toString(const Layout& layout) const override
-    {
+    [[nodiscard]] std::string toString(const Layout& layout) const override {
         const std::string text_elem = "text";
         std::stringstream ss;
         ss << elemStart(text_elem) << attribute("x", translateX(origin.x, layout))
@@ -79,8 +70,7 @@ public:
         return ss.str();
     }
 
-    void offset(const Point& offset) override
-    {
+    void offset(const Point& offset) override {
         origin.x += offset.x;
         origin.y += offset.y;
     }
