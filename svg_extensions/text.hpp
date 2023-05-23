@@ -54,7 +54,7 @@ public:
     Text_utf8(const Point& origin, const std::string& content, const Format& f = Format{})
         : Shape(Fill(f.color), f.stroke)
         , origin(origin)
-        , content(ul::str::utf8_to_HTML(content))
+        , content(ul::str::utf8_to_html(content))
         , format(f) {
     }
 
