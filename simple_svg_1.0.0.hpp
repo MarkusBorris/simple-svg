@@ -37,6 +37,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <string>
 #include <sstream>
 #include <fstream>
+#include <optional>
 
 #include <iostream>
 
@@ -64,31 +65,6 @@ namespace svg
         return "/>\n";
     }
 
-    // Quick optional return type.  This allows functions to return an invalid
-    //  value if no good return is possible.  The user checks for validity
-    //  before using the returned value.
-    template <typename T>
-    class optional
-    {
-    public:
-        optional<T>(T const & type)
-            : valid(true), type(type) { }
-        optional<T>() : valid(false), type(T()) { }
-        T * operator->()
-        {
-            // If we try to access an invalid value, an exception is thrown.
-            if (!valid)
-                throw std::exception();
-
-            return &type;
-        }
-        // Test for validity.
-        bool operator!() const { return !valid; }
-    private:
-        bool valid;
-        T type;
-    };
-
     struct Dimensions
     {
         Dimensions(double width, double height) : width(width), height(height) { }
@@ -103,7 +79,7 @@ namespace svg
         double x;
         double y;
     };
-    inline optional<Point> getMinPoint(std::vector<Point> const & points)
+    inline std::optional<Point> getMinPoint(std::vector<Point> const & points)
     {
         if (points.empty())
             return {};
@@ -117,7 +93,7 @@ namespace svg
         }
         return {min};
     }
-    inline optional<Point> getMaxPoint(std::vector<Point> const & points)
+    inline std::optional<Point> getMaxPoint(std::vector<Point> const & points)
     {
         if (points.empty())
             return {};
@@ -607,13 +583,13 @@ namespace svg
         Dimensions margin;
         std::vector<Polyline> polylines;
 
-        optional<Dimensions> getDimensions() const
+        std::optional<Dimensions> getDimensions() const
         {
             if (polylines.empty())
                 return {};
 
-            optional<Point> min = getMinPoint(polylines[0].points);
-            optional<Point> max = getMaxPoint(polylines[0].points);
+            std::optional<Point> min = getMinPoint(polylines[0].points);
+            std::optional<Point> max = getMaxPoint(polylines[0].points);
             for (const auto & polyline : polylines) {
                 if (getMinPoint(polyline.points)->x < min->x)
                     min->x = getMinPoint(polyline.points)->x;
@@ -629,7 +605,7 @@ namespace svg
         }
         std::string axisString(Layout const & layout) const
         {
-            optional<Dimensions> dimensions = getDimensions();
+            std::optional<Dimensions> dimensions = getDimensions();
             if (!dimensions)
                 return "";
 
